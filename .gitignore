@@ -1,0 +1,12 @@
+*.directory
+.metadata/
+*.bit
+RemoteSystemsTempFiles/
+*FPGA_interface.sdk/FPGA_interface/Debug*
+*FPGA_interface.sdk/FPGA_interface_BSP/ps7_cortexa9_0/lib/
+*FPGA_interface.sdk/FPGA_interface_BSP/ps7_cortexa9_0/include/
+*.o
+*.d
+*.bin
+*.elf
+*webtalk*

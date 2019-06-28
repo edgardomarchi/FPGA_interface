@@ -1,0 +1,13 @@
+11:21:42 INFO  : Registering command handlers for SDK TCF services
+11:21:45 INFO  : Launching XSCT server: xsct -n -interactive /home/edgardo/repos/FPGA_interface/FPGA_interface.sdk/temp_xsdb_launch_script.tcl
+11:21:49 INFO  : XSCT server has started successfully.
+11:21:49 INFO  : Successfully done setting XSCT server connection channel  
+11:21:49 INFO  : Successfully done setting SDK workspace  
+11:22:52 INFO  : Project 'FPGA_interface_HW' created. You can now create BSPs and application projects targeting this hardware platform.
+11:32:33 INFO  : Launching XSCT server: xsct -n -interactive /home/edgardo/repos/FPGA_interface/FPGA_interface.sdk/temp_xsdb_launch_script.tcl
+11:32:36 INFO  : XSCT server has started successfully.
+12:02:53 INFO  : Launching XSCT server: xsct -n -interactive /home/edgardo/repos/FPGA_interface/FPGA_interface.sdk/temp_xsdb_launch_script.tcl
+12:02:56 INFO  : XSCT server has started successfully.
+12:02:56 INFO  : Successfully done setting XSCT server connection channel  
+12:02:56 INFO  : Successfully done setting SDK workspace  
+12:03:03 INFO  : Registering command handlers for SDK TCF services

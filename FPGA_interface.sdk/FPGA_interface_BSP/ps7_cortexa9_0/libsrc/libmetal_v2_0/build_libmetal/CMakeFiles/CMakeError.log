@@ -1,0 +1,23 @@
+Determining if files xintc.h exist failed with the following output:
+Change Dir: /home/edgardo/repos/FPGA_interface/FPGA_interface.sdk/FPGA_interface_BSP/ps7_cortexa9_0/libsrc/libmetal_v2_0/build_libmetal/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_c93d5/fast"
+/usr/bin/make -f CMakeFiles/cmTC_c93d5.dir/build.make CMakeFiles/cmTC_c93d5.dir/build
+make[1]: se entra en el directorio '/home/edgardo/repos/FPGA_interface/FPGA_interface.sdk/FPGA_interface_BSP/ps7_cortexa9_0/libsrc/libmetal_v2_0/build_libmetal/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_c93d5.dir/CheckIncludeFiles.c.obj
+/opt/Xilinx/SDK/2019.1/gnu/aarch32/lin/gcc-arm-none-eabi/bin/arm-none-eabi-gcc   -O2 -c -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard -nostartfiles -g -Wall -Wextra -I/home/edgardo/repos/FPGA_interface/FPGA_interface.sdk/FPGA_interface_BSP/ps7_cortexa9_0/include    -o CMakeFiles/cmTC_c93d5.dir/CheckIncludeFiles.c.obj   -c /home/edgardo/repos/FPGA_interface/FPGA_interface.sdk/FPGA_interface_BSP/ps7_cortexa9_0/libsrc/libmetal_v2_0/build_libmetal/CMakeFiles/CMakeTmp/CheckIncludeFiles.c
+/home/edgardo/repos/FPGA_interface/FPGA_interface.sdk/FPGA_interface_BSP/ps7_cortexa9_0/libsrc/libmetal_v2_0/build_libmetal/CMakeFiles/CMakeTmp/CheckIncludeFiles.c:2:10: fatal error: xintc.h: No such file or directory
+ #include <xintc.h>
+          ^~~~~~~~~
+compilation terminated.
+make[1]: se sale del directorio '/home/edgardo/repos/FPGA_interface/FPGA_interface.sdk/FPGA_interface_BSP/ps7_cortexa9_0/libsrc/libmetal_v2_0/build_libmetal/CMakeFiles/CMakeTmp'
+make[1]: *** [CMakeFiles/cmTC_c93d5.dir/build.make:66: CMakeFiles/cmTC_c93d5.dir/CheckIncludeFiles.c.obj] Error 1
+make: *** [Makefile:126: cmTC_c93d5/fast] Error 2
+
+Source:
+/* */
+#include <xintc.h>
+
+
+int main(void){return 0;}
+
