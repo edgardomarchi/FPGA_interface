@@ -10,3 +10,4 @@ RemoteSystemsTempFiles/
 *.bin
 *.elf
 *webtalk*
+*.log
