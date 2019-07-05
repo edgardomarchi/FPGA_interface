@@ -36,7 +36,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#define THREAD_STACKSIZE 1024
+#define THREAD_STACKSIZE 2048
 
 u16_t echo_port = 7;
 

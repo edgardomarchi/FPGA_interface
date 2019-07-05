@@ -53,12 +53,23 @@ int IicPhyReset(void);
  */
 XScuGic xInterruptController;
 XAxiDma dma;
+static struct netif server_netif;
+struct netif *echo_netif;
 
 /*
  * Semaphores
  */
-SemaphoreHandle_t NtwrkBinarySemaphore;	// Frees execution of main thread after network init.
 SemaphoreHandle_t DMABinarySemaphore;
+
+#define MAX_SIGNAL_LENGTH 1500
+
+/*
+ * Buffers
+ */
+volatile u32 sharedToFPGABuffer[MAX_SIGNAL_LENGTH];		// DMA shared memory
+volatile u32 sharedFromFPGABuffer[MAX_SIGNAL_LENGTH];	// DMA shared memory
+char send_buf[UDP_SEND_BUFSIZE];  		// UDP buffer
+char recv_buf[UDP_SEND_BUFSIZE];  		// UDP buffer
 
 int main_thread();
 void print_echo_app_header();
@@ -75,8 +86,7 @@ err_t dhcp_start(struct netif *netif);
 
 #define THREAD_STACKSIZE 2048
 
-static struct netif server_netif;
-struct netif *echo_netif;
+
 
 #if LWIP_IPV6==1
 void print_ip6(char *msg, ip_addr_t *ip)
@@ -254,9 +264,6 @@ int main_thread()
 			print_ip_settings(&(server_netif.ip_addr), &(server_netif.netmask), &(server_netif.gw));
 			print_echo_app_header();
 			xil_printf("\r\n");
-			sys_thread_new("echod", echo_application_thread, 0,
-					THREAD_STACKSIZE,
-					DEFAULT_THREAD_PRIO);
 			break;
 		}
 		mscnt += DHCP_FINE_TIMER_MSECS;
@@ -274,14 +281,15 @@ int main_thread()
 
 			print_echo_app_header();
 			xil_printf("\r\n");
-			sys_thread_new("echod", echo_application_thread, 0,
-					THREAD_STACKSIZE,
-					DEFAULT_THREAD_PRIO);
 			break;
 		}
 	}
 #endif
 #endif
+    initPlatform();
+    sys_thread_new("echod", echo_application_thread, 0,
+    					THREAD_STACKSIZE,
+    					DEFAULT_THREAD_PRIO);
     vTaskDelete(NULL);
     return 0;
 }
