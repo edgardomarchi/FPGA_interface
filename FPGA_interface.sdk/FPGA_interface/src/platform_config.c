@@ -22,8 +22,8 @@
 #include "lwip/tcp.h"
 #include "xil_printf.h"
 #include "netif/xadapter.h"
+#include "platform_config.h"
 #ifdef PLATFORM_ZYNQ
-#include "platform.h"
 #include "dma.h"
 #include "xaxidma.h"
 

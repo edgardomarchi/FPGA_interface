@@ -31,6 +31,7 @@
 #include "netif/xadapter.h"
 #include "platform_config.h"
 #include "xil_printf.h"
+#include "xscugic.h"
 
 #if LWIP_IPV6==1
 #include "lwip/ip.h"
@@ -61,15 +62,14 @@ struct netif *echo_netif;
  */
 SemaphoreHandle_t DMABinarySemaphore;
 
-#define MAX_SIGNAL_LENGTH 1500
 
 /*
  * Buffers
  */
 volatile u32 sharedToFPGABuffer[MAX_SIGNAL_LENGTH];		// DMA shared memory
 volatile u32 sharedFromFPGABuffer[MAX_SIGNAL_LENGTH];	// DMA shared memory
-char send_buf[UDP_SEND_BUFSIZE];  		// UDP buffer
-char recv_buf[UDP_SEND_BUFSIZE];  		// UDP buffer
+char send_buf[2048];  		// Send buffer
+char recv_buf[2048];  		// Receive buffer
 
 int main_thread();
 void print_echo_app_header();
@@ -85,7 +85,6 @@ err_t dhcp_start(struct netif *netif);
 #endif
 
 #define THREAD_STACKSIZE 2048
-
 
 
 #if LWIP_IPV6==1
@@ -239,6 +238,7 @@ void network_thread(void *p)
 
 int main_thread()
 {
+    init_platform();
 #if LWIP_DHCP==1
 	int mscnt = 0;
 #endif
@@ -286,7 +286,6 @@ int main_thread()
 	}
 #endif
 #endif
-    initPlatform();
     sys_thread_new("echod", echo_application_thread, 0,
     					THREAD_STACKSIZE,
     					DEFAULT_THREAD_PRIO);

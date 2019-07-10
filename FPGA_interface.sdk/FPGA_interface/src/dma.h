@@ -8,7 +8,8 @@
 #define DMA_DEBUG_ON 0
 
 int initializeAXIDMA(XAxiDma *, unsigned int );
-void dma_callback(void *callback);
+void dma_fromPL_callback(void *callback);
+void dma_toPL_callback(void *callback);
 
 
 #endif	/* DMA__H */

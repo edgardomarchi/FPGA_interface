@@ -51,7 +51,7 @@ int initializeAXIDMA( XAxiDma *dma, unsigned int DEVICE_ID )
 }
 
 
-void dma_callback(void *callback)
+void dma_fromPL_callback(void *callback)
 {
 #if DMA_DEBUG_ON
 	xil_printf("DMA: Interrupted!\n\r");
@@ -102,5 +102,49 @@ void dma_callback(void *callback)
 			xil_printf(" [%d]=%08x", j, sharedMemoryBuffer[j]);
 		xil_printf("\n\r");
 #endif
+    }
+}
+
+void dma_toPL_callback(void *callback)
+{
+	xil_printf("Data to FPGA available!\n\r");
+	BaseType_t xHigherPriorityTaskWoken;
+
+    /* The xHigherPriorityTaskWoken parameter must be initialized to pdFALSE
+     * because it will get set to pdTRUE inside the interrupt-safe API function
+     * if a context switch is required. */
+    xHigherPriorityTaskWoken = pdFALSE;
+
+
+    int status;
+    XAxiDma *axidma = (XAxiDma *)callback;
+
+    // Disable interrupts on DMA
+    XAxiDma_IntrDisable(axidma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DMA_TO_DEVICE);
+    // Read pending interrupts
+    status = XAxiDma_IntrGetIrq(axidma, XAXIDMA_DMA_TO_DEVICE);
+    // Acknowledge pending interrupts
+    XAxiDma_IntrAckIrq(axidma, status, XAXIDMA_DMA_TO_DEVICE);
+    // If no interrupt is asserted, nothing to do
+    if (!(status & XAXIDMA_IRQ_ALL_MASK)) return;
+    // Reset DMA engine if there was an error
+    if (status & XAXIDMA_IRQ_ERROR_MASK) {
+    	xil_printf("WARNING: Error Interrupt on DMA!\n\r");
+    	XAxiDma_Reset(axidma);
+    	while (!XAxiDma_ResetIsDone(axidma))
+    	return;
+    }
+    if (status & XAXIDMA_IRQ_IOC_MASK){
+    	/* Give the semaphore to unblock the task, passing in the address of
+		 * xHigherPriorityTaskWoken as the interrupt-safe API function's
+		 * pxHigherPriorityTaskWoken parameter. */
+		//xSemaphoreGiveFromISR( DMABinarySemaphore, &xHigherPriorityTaskWoken );
+    	xil_printf("Data sent to FPGA,\n\r");
+		/* Pass the xHigherPriorityTaskWoken value into portYIELD_FROM_ISR().
+		 * If xHigherPriorityTaskWoken was set to pdTRUE inside xSemaphoreGiveFromISR(),
+		 * then calling portYIELD_FROM_ISR() will request a context switch.
+		 * If xHigherPriorityTaskWoken is still pdFALSE, then calling portYIELD_FROM_ISR()
+		 * will have no effect. */
+		portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
     }
 }

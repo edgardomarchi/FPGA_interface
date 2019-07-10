@@ -35,10 +35,19 @@
 #include "xil_printf.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "platform_config.h"
+#include "dma.h"
+#include "xaxidma.h"
 
 #define THREAD_STACKSIZE 2048
 
 u16_t echo_port = 7;
+
+extern XAxiDma dma;
+extern u32 sharedToFPGABuffer[MAX_SIGNAL_LENGTH];		// DMA shared memory
+extern u32 sharedFromFPGABuffer[MAX_SIGNAL_LENGTH];		// DMA shared memory
+extern char send_buf[2048];  		// Send buffer
+extern char recv_buf[2048];  		// Receive buffer
 
 void print_echo_app_header()
 {
@@ -53,8 +62,11 @@ void process_echo_request(void *p)
 {
 	int sd = (int)p;
 	int RECV_BUF_SIZE = 2048;
-	char recv_buf[RECV_BUF_SIZE];
+	//char recv_buf[RECV_BUF_SIZE];
+	//char send_buf[RECV_BUF_SIZE];
 	int n, nwrote;
+	int i, j;	// iterators
+	int status;
 
 	while (1) {
 		/* read a max of RECV_BUF_SIZE bytes from socket */
@@ -72,6 +84,37 @@ void process_echo_request(void *p)
 			break;
 
 		/* handle request */
+		// Convert 8 to 32 bits
+		i=0;
+		for (j=0; j<n/4; j++)
+		{
+			sharedToFPGABuffer[j] = (recv_buf[i+3] << 24) | (recv_buf[i+2] << 16) |
+									(recv_buf[i+1] << 8)  | (recv_buf[i]);
+			i=i+4;
+			xil_printf("%x\n\r",sharedToFPGABuffer[j]);
+		}
+		// Send to DMA
+		XAxiDma_IntrEnable(&dma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DMA_TO_DEVICE);
+    	status = XAxiDma_SimpleTransfer(&dma, (UINTPTR)sharedToFPGABuffer, n, XAXIDMA_DMA_TO_DEVICE);
+    	if (status != XST_SUCCESS) {
+    		xil_printf("WARNING: DMA RX failed!!!\n\r");
+    	}
+    	xil_printf("\n\r DMA transfer sent\n\r");
+
+
+    	XAxiDma_IntrEnable(&dma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
+    	status = XAxiDma_SimpleTransfer(&dma, (UINTPTR)sharedFromFPGABuffer, n, XAXIDMA_DEVICE_TO_DMA);
+    	if (status != XST_SUCCESS) {
+    		xil_printf("WARNING: DMA RX failed!!!\n\r");
+    	}
+
+    	for(i=0;i<(n/4);i++){
+    		send_buf[(i*4)+0]= (char) (sharedFromFPGABuffer[i]>>24);
+    		send_buf[(i*4)+1]= (char) (sharedFromFPGABuffer[i]>>16);
+    		send_buf[(i*4)+2]= (char) (sharedFromFPGABuffer[i]>>8);
+    		send_buf[(i*4)+3]= (char) (sharedFromFPGABuffer[i]);
+    	}
+
 		if ((nwrote = write(sd, recv_buf, n)) < 0) {
 			xil_printf("%s: ERROR responding to client echo request. received = %d, written = %d\r\n",
 					__FUNCTION__, n, nwrote);
@@ -123,7 +166,8 @@ void echo_application_thread()
 	size = sizeof(remote);
 
 	while (1) {
-		if ((new_sd = lwip_accept(sock, (struct sockaddr *)&remote, (socklen_t *)&size)) > 0) {
+		if ((new_sd = lwip_accept(sock, (struct sockaddr *)&remote, (socklen_t *)&size)) > 0)
+		{
 			sys_thread_new("echos", process_echo_request,
 				(void*)new_sd,
 				THREAD_STACKSIZE,
