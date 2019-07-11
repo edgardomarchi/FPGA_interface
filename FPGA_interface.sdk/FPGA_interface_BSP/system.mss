@@ -11,6 +11,7 @@ BEGIN OS
  PARAMETER SYSTMR_SPEC = true
  PARAMETER stdin = ps7_uart_0
  PARAMETER stdout = ps7_uart_0
+ PARAMETER total_heap_size = 131072
 END
 
 

@@ -49,6 +49,9 @@ extern u32 sharedFromFPGABuffer[MAX_SIGNAL_LENGTH];		// DMA shared memory
 extern char send_buf[2048];  		// Send buffer
 extern char recv_buf[2048];  		// Receive buffer
 
+extern SemaphoreHandle_t DMAToFPGABinarySemaphore;
+extern SemaphoreHandle_t DMAFromFPGABinarySemaphore;
+
 void print_echo_app_header()
 {
     xil_printf("%20s %6d %s\r\n", "echo server",
@@ -69,53 +72,73 @@ void process_echo_request(void *p)
 	int status;
 
 	while (1) {
+
+		/* Clear caches */
+		Xil_DCacheFlushRange((UINTPTR)sharedToFPGABuffer, MAX_SIGNAL_LENGTH*4);
+		Xil_DCacheFlushRange((UINTPTR)sharedFromFPGABuffer, MAX_SIGNAL_LENGTH*4);
+
+		/* Enable DMA interrupts */
+		XAxiDma_IntrEnable(&dma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DMA_TO_DEVICE);
+    	XAxiDma_IntrEnable(&dma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
+
+
 		/* read a max of RECV_BUF_SIZE bytes from socket */
 		if ((n = read(sd, recv_buf, RECV_BUF_SIZE)) < 0) {
 			xil_printf("%s: error reading from socket %d, closing socket\r\n", __FUNCTION__, sd);
 			break;
 		}
-
 		/* break if the recved message = "quit" */
 		if (!strncmp(recv_buf, "quit", 4))
 			break;
-
 		/* break if client closed connection */
 		if (n <= 0)
 			break;
+		xil_printf("Readed %d bytes.\n\r", n/4);
 
 		/* handle request */
 		// Convert 8 to 32 bits
 		i=0;
 		for (j=0; j<n/4; j++)
 		{
+			i=j*4;
 			sharedToFPGABuffer[j] = (recv_buf[i+3] << 24) | (recv_buf[i+2] << 16) |
 									(recv_buf[i+1] << 8)  | (recv_buf[i]);
-			i=i+4;
 			xil_printf("%x\n\r",sharedToFPGABuffer[j]);
 		}
+    	// Receive from DMA
+    	status = XAxiDma_SimpleTransfer(&dma, (UINTPTR)sharedFromFPGABuffer, n, XAXIDMA_DEVICE_TO_DMA);
+    	if (status != XST_SUCCESS) {
+    		xil_printf("WARNING: DMA TX failed!!!\n\r");
+    	}
 		// Send to DMA
-		XAxiDma_IntrEnable(&dma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DMA_TO_DEVICE);
     	status = XAxiDma_SimpleTransfer(&dma, (UINTPTR)sharedToFPGABuffer, n, XAXIDMA_DMA_TO_DEVICE);
     	if (status != XST_SUCCESS) {
     		xil_printf("WARNING: DMA RX failed!!!\n\r");
     	}
-    	xil_printf("\n\r DMA transfer sent\n\r");
 
+    	// Wait for data to be sent
+    	status = xSemaphoreTake(DMAToFPGABinarySemaphore, pdMS_TO_TICKS(30000)/*portMAX_DELAY*/);
+    	if(status==pdFALSE)
+    		xil_printf("\n\rDEBUG ERROR: Timeout getting DMA Semaphore in data send to FPGA!!!\n\r");
+    	else xil_printf("\n\rDMA PS -> PL transfer done\n\r");
 
-    	XAxiDma_IntrEnable(&dma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
-    	status = XAxiDma_SimpleTransfer(&dma, (UINTPTR)sharedFromFPGABuffer, n, XAXIDMA_DEVICE_TO_DMA);
-    	if (status != XST_SUCCESS) {
-    		xil_printf("WARNING: DMA RX failed!!!\n\r");
-    	}
+    	// Wait for data to be received
+    	status = xSemaphoreTake(DMAFromFPGABinarySemaphore, pdMS_TO_TICKS(30000)/*portMAX_DELAY*/);
+    	if(status==pdFALSE)
+    		xil_printf("\n\rDEBUG ERROR: Timeout getting DMA Semaphore in data receive from FPGA!!!\n\r");
+    	else xil_printf("\n\rDMA PL -> PS transfer done\n\r");
 
+    	// Convert 32 to 8 bits
     	for(i=0;i<(n/4);i++){
-    		send_buf[(i*4)+0]= (char) (sharedFromFPGABuffer[i]>>24);
-    		send_buf[(i*4)+1]= (char) (sharedFromFPGABuffer[i]>>16);
-    		send_buf[(i*4)+2]= (char) (sharedFromFPGABuffer[i]>>8);
-    		send_buf[(i*4)+3]= (char) (sharedFromFPGABuffer[i]);
+    		j=i*4;
+    		send_buf[j+3]= (char) (sharedFromFPGABuffer[i]>>24);
+    		send_buf[j+2]= (char) (sharedFromFPGABuffer[i]>>16);
+    		send_buf[j+1]= (char) (sharedFromFPGABuffer[i]>>8);
+    		send_buf[j]= (char) (sharedFromFPGABuffer[i]);
+    		xil_printf("%x\n\r",sharedFromFPGABuffer[i]);
     	}
 
-		if ((nwrote = write(sd, recv_buf, n)) < 0) {
+		if ((nwrote = write(sd, send_buf, n)) < 0) {
 			xil_printf("%s: ERROR responding to client echo request. received = %d, written = %d\r\n",
 					__FUNCTION__, n, nwrote);
 			xil_printf("Closing socket %d\r\n", sd);

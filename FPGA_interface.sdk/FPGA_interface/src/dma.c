@@ -1,7 +1,8 @@
 #include "dma.h"
 
 
-extern SemaphoreHandle_t DMABinarySemaphore;
+extern SemaphoreHandle_t DMAToFPGABinarySemaphore;
+extern SemaphoreHandle_t DMAFromFPGABinarySemaphore;
 
 
 /*
@@ -46,7 +47,7 @@ int initializeAXIDMA( XAxiDma *dma, unsigned int DEVICE_ID )
 	xil_printf("DMA: INFO - DMA reseted.\n\r");
 #endif
 
-	XAxiDma_IntrEnable(dma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
+	//XAxiDma_IntrEnable(dma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
 	return XST_SUCCESS;
 }
 
@@ -87,7 +88,8 @@ void dma_fromPL_callback(void *callback)
     	/* Give the semaphore to unblock the task, passing in the address of
 		 * xHigherPriorityTaskWoken as the interrupt-safe API function's
 		 * pxHigherPriorityTaskWoken parameter. */
-		xSemaphoreGiveFromISR( DMABinarySemaphore, &xHigherPriorityTaskWoken );
+    	xil_printf("Data receive from FPGA.\n\r");
+		xSemaphoreGiveFromISR( DMAFromFPGABinarySemaphore, &xHigherPriorityTaskWoken );
 
 		/* Pass the xHigherPriorityTaskWoken value into portYIELD_FROM_ISR().
 		 * If xHigherPriorityTaskWoken was set to pdTRUE inside xSemaphoreGiveFromISR(),
@@ -138,8 +140,8 @@ void dma_toPL_callback(void *callback)
     	/* Give the semaphore to unblock the task, passing in the address of
 		 * xHigherPriorityTaskWoken as the interrupt-safe API function's
 		 * pxHigherPriorityTaskWoken parameter. */
-		//xSemaphoreGiveFromISR( DMABinarySemaphore, &xHigherPriorityTaskWoken );
-    	xil_printf("Data sent to FPGA,\n\r");
+    	xil_printf("Data sent to FPGA.\n\r");
+    	xSemaphoreGiveFromISR( DMAToFPGABinarySemaphore, &xHigherPriorityTaskWoken );
 		/* Pass the xHigherPriorityTaskWoken value into portYIELD_FROM_ISR().
 		 * If xHigherPriorityTaskWoken was set to pdTRUE inside xSemaphoreGiveFromISR(),
 		 * then calling portYIELD_FROM_ISR() will request a context switch.
