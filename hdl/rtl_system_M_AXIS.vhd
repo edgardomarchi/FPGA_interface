@@ -2,14 +2,11 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-library utils;
-use utils.funciones.all;
-
 
 entity rtl_system_M_AXIS is
   generic (
     -- Users to add parameters here
-    DATA_WIDTH : integer := 24;
+
     -- User parameters ends
     -- Do not modify the parameters beyond this line
 
@@ -19,10 +16,10 @@ entity rtl_system_M_AXIS is
   port (
     -- Users to add ports here
     we_i        : in  std_logic;
-    data_i      : in  std_logic_vector(DATA_WIDTH-1 downto 0);
+    data_i      : in  std_logic_vector(C_M_AXIS_TDATA_WIDTH-1 downto 0);
     data_last_i : in  std_logic;
-    clk_i       : in  std_logic;        -- Clock proveniente de la lógica
-    rst_o       : out std_logic;        -- Activo alto (@M_AXIS_ACLK).
+    clk_i       : in  std_logic;        -- User logic clock.
+    rst_o       : out std_logic;        -- Active high (@M_AXIS_ACLK).
 
     -- User ports ends
     -- Do not modify the ports beyond this line
@@ -44,25 +41,25 @@ entity rtl_system_M_AXIS is
     );
 end rtl_system_M_AXIS;
 
-architecture implementation of rtl_system_M_AXIS is
+architecture arch_imp of rtl_system_M_AXIS is
 
-  component rtl_system_m_axi_block_fifo
+  component rtl_system_m_axis_block_fifo
     port (
       rst    : in  std_logic;
       wr_clk : in  std_logic;
       rd_clk : in  std_logic;
-      din    : in  std_logic_vector(DATA_WIDTH downto 0);  -- Se agrega el "last"
+      din    : in  std_logic_vector(C_M_AXIS_TDATA_WIDTH downto 0);  -- Se agrega el "last"
       wr_en  : in  std_logic;
       rd_en  : in  std_logic;
-      dout   : out std_logic_vector(DATA_WIDTH downto 0);
+      dout   : out std_logic_vector(C_M_AXIS_TDATA_WIDTH downto 0);
       full   : out std_logic;
       empty  : out std_logic;
       valid  : out std_logic
       );
   end component;
 
-  signal fifo_data_in  : std_logic_vector(DATA_WIDTH downto 0);
-  signal fifo_data_out : std_logic_vector(DATA_WIDTH downto 0);
+  signal fifo_data_in  : std_logic_vector(C_M_AXIS_TDATA_WIDTH downto 0);
+  signal fifo_data_out : std_logic_vector(C_M_AXIS_TDATA_WIDTH downto 0);
 
   signal rst        : std_logic;
   signal fifo_empty : std_logic;
@@ -73,7 +70,7 @@ begin
 
   fifo_data_in <= data_last_i & data_i;
 
-  FIFO : rtl_system_m_axi_block_fifo
+  FIFO : rtl_system_m_axis_block_fifo
     port map(
       rst    => rst,
       wr_clk => clk_i,
@@ -91,16 +88,12 @@ begin
 
   ren <= not fifo_empty and M_AXIS_TREADY;
 
-  M_AXIS_TDATA <= zeros((C_M_AXIS_TDATA_WIDTH - DATA_WIDTH)/2) &
-                  fifo_data_out((DATA_WIDTH-1) downto (DATA_WIDTH/2)) &
-                  zeros((C_M_AXIS_TDATA_WIDTH - DATA_WIDTH)/2) &
-                  fifo_data_out((DATA_WIDTH/2)-1 downto 0);
-
-  M_AXIS_TLAST  <= fifo_data_out(DATA_WIDTH) and fifo_valid and M_AXIS_TREADY;
+  M_AXIS_TDATA <= fifo_data_out(C_M_AXIS_TDATA_WIDTH-1 downto 0);
+  M_AXIS_TLAST  <= fifo_data_out(C_M_AXIS_TDATA_WIDTH) and fifo_valid and M_AXIS_TREADY;
   M_AXIS_TSTRB  <= (others => '1');
   M_AXIS_TVALID <= fifo_valid and ren;
 
   rst   <= not M_AXIS_ARESETN;
   rst_o <= rst;
 
-end implementation;
+end arch_imp;

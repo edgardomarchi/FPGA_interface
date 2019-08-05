@@ -2,7 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity plataformaUWB_S_AXI is
+entity rtl_system_S_AXI is
 	generic (
 		-- Users to add parameters here
 
@@ -85,9 +85,9 @@ entity plataformaUWB_S_AXI is
     		-- accept the read data and response information.
 		S_AXI_RREADY	: in std_logic
 	);
-end plataformaUWB_S_AXI;
+end rtl_system_S_AXI;
 
-architecture arch_imp of plataformaUWB_S_AXI is
+architecture arch_imp of rtl_system_S_AXI is
 
 	-- AXI4LITE signals
 	signal axi_awaddr	: std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);

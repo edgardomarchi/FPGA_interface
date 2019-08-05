@@ -14,6 +14,9 @@ entity rtl_system is
     C_S_AXI_DATA_WIDTH : integer := 32;
     C_S_AXI_ADDR_WIDTH : integer := 6;
 
+    -- Parameters of Axi Master Bus Interface S_AXIS
+    C_S_AXIS_TDATA_WIDTH : integer := 32;
+
     -- Parameters of Axi Master Bus Interface M_AXIS
     C_M_AXIS_TDATA_WIDTH : integer := 32;
     C_M_AXIS_START_COUNT : integer := 32
@@ -54,7 +57,7 @@ entity rtl_system is
     S_AXIS_TDATA   : in  std_logic_vector(C_S_AXIS_TDATA_WIDTH-1 downto 0);
     S_AXIS_TSTRB   : in  std_logic_vector((C_S_AXIS_TDATA_WIDTH/8)-1 downto 0);
     S_AXIS_TLAST   : in  std_logic;
-    S_AXIS_TVALID  : in  std_logic
+    S_AXIS_TVALID  : in  std_logic;
 
     -- Ports of Axi Streaming Master Bus Interface M_AXIS
     m_axis_aclk    : in  std_logic;
@@ -76,7 +79,7 @@ architecture arch_imp of rtl_system is
       C_S_AXI_ADDR_WIDTH : integer := 6
       );
     port (
-      -- Puertos internos
+      -- User logic configuration registers
       reg0_o        : out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
       reg1_o        : out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
       reg2_o        : out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
@@ -117,7 +120,11 @@ architecture arch_imp of rtl_system is
     );
   port (
     -- Users to add ports here
-
+    dv_o           : out  std_logic;
+    data_o         : out  std_logic_vector(C_S_AXIS_TDATA_WIDTH-1 downto 0);
+    data_last_o    : out  std_logic;
+    clk_i          : in   std_logic;  -- User logic clock.
+    rst_o          : out std_logic;   -- Active high.
     -- User ports ends
 
     -- Do not modify the ports beyond this line
@@ -129,7 +136,7 @@ architecture arch_imp of rtl_system is
     S_AXIS_TLAST   : in  std_logic;
     S_AXIS_TVALID  : in  std_logic
     );
-    end rtl_system_S_AXIS;
+    end component rtl_system_S_AXIS;
 
   component rtl_system_M_AXIS is
     generic (
@@ -138,10 +145,10 @@ architecture arch_imp of rtl_system is
     port (
       -- Users to add ports here
       we_i           : in  std_logic;
-      data_i         : in  std_logic_vector(DATA_WIDTH-1 downto 0);
+      data_i         : in  std_logic_vector(C_M_AXIS_TDATA_WIDTH-1 downto 0);
       data_last_i    : in  std_logic;
-      clk_i          : in  std_logic;   -- Clock proveniente de AXI.
-      rst_o          : out std_logic;   -- Activo alto.
+      clk_i          : in  std_logic;  -- User logic clock.
+      rst_o          : out std_logic;  -- Active high.
       -- Fin puertos de usuario
       M_AXIS_ACLK    : in  std_logic;
       M_AXIS_ARESETN : in  std_logic;
@@ -155,15 +162,24 @@ architecture arch_imp of rtl_system is
 
   signal rst : std_logic;
 
-  -- Registros de configuración
+  -- Configuration registers
   signal reg0 : std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
   signal reg1 : std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
   signal reg2 : std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
   signal reg3 : std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
   
+  signal data       : std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
+  signal data_last  : std_logic;
+  signal dv         : std_logic;
+
+  -- For DEBUGGING:
+  attribute MARK_DEBUG : string;
+  attribute MARK_DEBUG of data      : signal is "TRUE";
+  attribute MARK_DEBUG of data_last : signal is "TRUE";
+  attribute MARK_DEBUG of dv        : signal is "TRUE";
+
 begin
 
-  rst <= not rstn_i;
 
   -- Instantiation of Axi Bus Interface S_AXI
   rtl_system_S_AXI_inst: rtl_system_S_AXI
@@ -200,18 +216,17 @@ begin
       );
 
   -- Instantiation of Axi Bus Interface M_AXIS
-  rtl_system_M_AXIS: rtl_system_M_AXIS
+  rtl_system_M_AXIS_inst: rtl_system_M_AXIS
     generic map (
-      -- DATA_WIDTH           => (SAMPLE_BIT_DEPTH + ceil2power(MAX_NUM_AVRG-1))*CHANNELS,
       C_M_AXIS_TDATA_WIDTH => C_M_AXIS_TDATA_WIDTH
       )
     port map (
       -- Users to add ports here
-      we_i           => dv_avrg,
-      data_i         => data_IQ_averaged,
-      data_last_i    => last_avrg,
-      clk_i          => clk_Tsample_i,
-      rst_o          => open,           -- Activo alto.
+      we_i           => dv,
+      data_i         => data,
+      data_last_i    => data_last,
+      clk_i          => m_axis_aclk,  -- Replace with user logic clock
+      rst_o          => open,         -- Active high.
       -- Fin puertos de usuario
       M_AXIS_ACLK    => m_axis_aclk,
       M_AXIS_ARESETN => m_axis_aresetn,
@@ -222,6 +237,29 @@ begin
       M_AXIS_TREADY  => m_axis_tready
       );
 
+  -- Instantiation of Axi Bus Interface S_AXIS
+  rtl_system_S_AXIS_inst: rtl_system_S_AXIS
+    generic map (
+      C_S_AXIS_TDATA_WIDTH => C_S_AXIS_TDATA_WIDTH
+      )
+    port map (
+      -- Users to add ports here
+      dv_o           => dv,
+      data_o         => data,
+      data_last_o    => data_last,
+      clk_i          => m_axis_aclk,  -- Replace with user logic clock
+      rst_o          => open,         -- Active high.
+      -- Fin puertos de usuario
+      S_AXIS_ACLK    => s_axis_aclk,
+      S_AXIS_ARESETN => s_axis_aresetn,
+      S_AXIS_TVALID  => s_axis_tvalid,
+      S_AXIS_TDATA   => s_axis_tdata,
+      S_AXIS_TSTRB   => s_axis_tstrb,
+      S_AXIS_TLAST   => s_axis_tlast,
+      S_AXIS_TREADY  => s_axis_tready
+      );
+      
+  -- User logic start here
 
 
 end arch_imp;

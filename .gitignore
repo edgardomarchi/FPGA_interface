@@ -11,3 +11,7 @@ RemoteSystemsTempFiles/
 *.elf
 *webtalk*
 *.log
+hdl/ipshared/*
+hdl/IPs/*/synth/*
+hdl/IPs/*.xml
+hdl/IPs/*.xdc
