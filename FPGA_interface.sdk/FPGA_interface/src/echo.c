@@ -46,8 +46,8 @@ u16_t echo_port = 7;
 extern XAxiDma dma;
 extern u32 sharedToFPGABuffer[MAX_SIGNAL_LENGTH];		// DMA shared memory
 extern u32 sharedFromFPGABuffer[MAX_SIGNAL_LENGTH];		// DMA shared memory
-extern char send_buf[2048];  		// Send buffer
-extern char recv_buf[2048];  		// Receive buffer
+extern char send_buf[1480];  		// Send buffer
+extern char recv_buf[1480];  		// Receive buffer
 
 extern SemaphoreHandle_t DMAToFPGABinarySemaphore;
 extern SemaphoreHandle_t DMAFromFPGABinarySemaphore;
@@ -64,17 +64,11 @@ void print_echo_app_header()
 void process_echo_request(void *p)
 {
 	int sd = (int)p;
-	int RECV_BUF_SIZE = 2048;
 	int n, nwrote, nwords;
 	int i, j;	// iterators
 	int status;
 
 	while (1) {
-
-		/* Enable DMA interrupts */
-		XAxiDma_IntrEnable(&dma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DMA_TO_DEVICE);
-    	XAxiDma_IntrEnable(&dma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
-
 
 		/* read a max of RECV_BUF_SIZE bytes from socket */
 		if ((n = read(sd, recv_buf, RECV_BUF_SIZE)) < 0) {
@@ -85,11 +79,8 @@ void process_echo_request(void *p)
 		if (n <= 0)
 			break;
 
-		nwords = n/4;
+		nwords = n/4;	// Number of 32 bit words received
 		xil_printf("%d words were read.\n\r", nwords);
-
-		for (i=0; i<n; i++)
-			xil_printf("recv_buf[%d] = %08x \n\r", i, recv_buf[i]);
 
 		/* handle request */
 		// Convert 8 to 32 bits
@@ -99,14 +90,12 @@ void process_echo_request(void *p)
 			i=j*4;
 			sharedToFPGABuffer[j] = (recv_buf[i+3] << 24) | (recv_buf[i+2] << 16) |
 									(recv_buf[i+1] << 8)  | (recv_buf[i]);
-
-			xil_printf("sharedToFPGABuffer[%d] = %08x \n\r", j, sharedToFPGABuffer[j]);
 		}
 
 		// Send to DMA (specified in bytes)
-
-		Xil_DCacheFlushRange((UINTPTR)sharedToFPGABuffer, nwords);
-    	status = XAxiDma_SimpleTransfer(&dma, sharedToFPGABuffer, nwords*4, XAXIDMA_DMA_TO_DEVICE);
+		Xil_DCacheFlushRange((UINTPTR)sharedToFPGABuffer, nwords*4);
+		XAxiDma_IntrEnable(&dma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DMA_TO_DEVICE);
+    	status = XAxiDma_SimpleTransfer(&dma, (UINTPTR)sharedToFPGABuffer, nwords*4, XAXIDMA_DMA_TO_DEVICE);
     	if (status != XST_SUCCESS) {
     		xil_printf("WARNING: DMA RX failed!!!\n\r");
     	}
@@ -115,10 +104,11 @@ void process_echo_request(void *p)
     	status = xSemaphoreTake(DMAToFPGABinarySemaphore, pdMS_TO_TICKS(5000)/*portMAX_DELAY*/);
     	if(status==pdFALSE)
     		xil_printf("\n\rDEBUG ERROR: Timeout getting DMA Semaphore in data send to FPGA!!!\n\r");
-    	else xil_printf("\n\rDMA PS -> PL transfer done\n\r");
 
     	// Start receiving from DMA (specified in bytes)
-    	status = XAxiDma_SimpleTransfer(&dma, sharedFromFPGABuffer, nwords*4, XAXIDMA_DEVICE_TO_DMA);
+		Xil_DCacheFlushRange((UINTPTR)sharedFromFPGABuffer, nwords*4);
+    	XAxiDma_IntrEnable(&dma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
+    	status = XAxiDma_SimpleTransfer(&dma, (UINTPTR)sharedFromFPGABuffer, nwords*4, XAXIDMA_DEVICE_TO_DMA);
     	if (status != XST_SUCCESS) {
     		xil_printf("WARNING: DMA TX failed!!!\n\r");
     	}
@@ -127,12 +117,10 @@ void process_echo_request(void *p)
     	status = xSemaphoreTake(DMAFromFPGABinarySemaphore, pdMS_TO_TICKS(5000)/*portMAX_DELAY*/);
     	if(status==pdFALSE)
     		xil_printf("\n\rDEBUG ERROR: Timeout getting DMA Semaphore in data receive from FPGA!!!\n\r");
-    	else xil_printf("\n\rDMA PL -> PS transfer done\n\r");
 
     	// Convert 32 to 8 bits
-		Xil_DCacheFlushRange((UINTPTR)sharedFromFPGABuffer, nwords);
-    	for(i=0;i<nwords;i++){
-    		j=i*4;
+		for(i=0;i<nwords;i++){
+			j=i*4;
     		send_buf[j+3]= (char) (sharedFromFPGABuffer[i]>>24);
     		send_buf[j+2]= (char) (sharedFromFPGABuffer[i]>>16);
     		send_buf[j+1]= (char) (sharedFromFPGABuffer[i]>>8);
@@ -140,7 +128,7 @@ void process_echo_request(void *p)
     	}
 
 		if ((nwrote = write(sd, send_buf, n)) < 0) {
-			xil_printf("%s: ERROR responding to client echo request. received = %d, written = %d\r\n",
+			xil_printf("%s: ERROR responding to client. Received = %d, written = %d\r\n",
 					__FUNCTION__, n, nwrote);
 			xil_printf("Closing socket %d\r\n", sd);
 			break;

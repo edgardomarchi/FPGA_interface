@@ -67,10 +67,10 @@ SemaphoreHandle_t DMAFromFPGABinarySemaphore;
 /*
  * Buffers
  */
-u32 sharedToFPGABuffer[MAX_SIGNAL_LENGTH];		// DMA shared memory
-u32 sharedFromFPGABuffer[MAX_SIGNAL_LENGTH];	// DMA shared memory
-char send_buf[2048];  		// Send buffer
-char recv_buf[2048];  		// Receive buffer
+u32 volatile sharedToFPGABuffer[MAX_SIGNAL_LENGTH];		// DMA shared memory
+u32 volatile sharedFromFPGABuffer[MAX_SIGNAL_LENGTH];	// DMA shared memory
+char send_buf[RECV_BUF_SIZE];  		// Send buffer
+char recv_buf[RECV_BUF_SIZE];  		// Receive buffer
 
 int main_thread();
 void print_echo_app_header();
@@ -85,7 +85,7 @@ err_t dhcp_start(struct netif *netif);
 #endif
 #endif
 
-#define THREAD_STACKSIZE 1024
+#define THREAD_STACKSIZE 2048
 
 
 #if LWIP_IPV6==1

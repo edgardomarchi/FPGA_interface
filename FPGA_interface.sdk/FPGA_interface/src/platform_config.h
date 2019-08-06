@@ -6,7 +6,8 @@
 
 #define PLATFORM_ZYNQ
 
-#define MAX_SIGNAL_LENGTH 1500
+#define RECV_BUF_SIZE 		1480 // Max TCP Payload over 1500 MTU of Ethernet
+#define MAX_SIGNAL_LENGTH 	RECV_BUF_SIZE/4
 
 void platform_setup_interrupts(void);
 void init_platform();

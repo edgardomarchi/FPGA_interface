@@ -91,7 +91,7 @@ begin
   M_AXIS_TDATA <= fifo_data_out(C_M_AXIS_TDATA_WIDTH-1 downto 0);
   M_AXIS_TLAST  <= fifo_data_out(C_M_AXIS_TDATA_WIDTH) and fifo_valid and M_AXIS_TREADY;
   M_AXIS_TSTRB  <= (others => '1');
-  M_AXIS_TVALID <= fifo_valid and ren;
+  M_AXIS_TVALID <= fifo_valid and M_AXIS_TREADY;
 
   rst   <= not M_AXIS_ARESETN;
   rst_o <= rst;
