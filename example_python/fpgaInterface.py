@@ -1,17 +1,25 @@
 import numpy as np
 import socket
-
+import time as t
 s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect(('192.168.1.10', 7))
 
 
-data = np.random.randn(100)
+data = np.random.randint(0,100,100)
 print(data)
-
+start = t.time()
 s.send(data.tobytes())
-print('Bytes sent: {0!s}'.format(len(data.tobytes())))
-recvData = s.recv(len(data.tobytes()))
-print('Bytes received: {0!s}'.format(len(recvData)))
+end = t.time()
+dataLen = len(data.tobytes())
+dataRate = dataLen / (end - start) * 8
+print('Bytes sent: {0!s} @{1!s}'.format(dataLen,dataRate))
 
-rxData = np.frombuffer(recvData)
+start = t.time()
+recvData = s.recv(len(data.tobytes()))
+end = t.time()
+dataLen = len(recvData)
+dataRate = dataLen / (end - start) * 8
+print('Bytes received: {0!s} @{1!s}'.format(dataLen,dataRate))
+
+rxData = np.frombuffer(recvData, dtype=int)
 print(rxData)

@@ -88,7 +88,7 @@ void dma_fromPL_callback(void *callback)
     	/* Give the semaphore to unblock the task, passing in the address of
 		 * xHigherPriorityTaskWoken as the interrupt-safe API function's
 		 * pxHigherPriorityTaskWoken parameter. */
-    	xil_printf("Data receive from FPGA.\n\r");
+    	xil_printf("Data received from FPGA.\n\r");
 		xSemaphoreGiveFromISR( DMAFromFPGABinarySemaphore, &xHigherPriorityTaskWoken );
 
 		/* Pass the xHigherPriorityTaskWoken value into portYIELD_FROM_ISR().
@@ -109,7 +109,6 @@ void dma_fromPL_callback(void *callback)
 
 void dma_toPL_callback(void *callback)
 {
-	xil_printf("Data to FPGA available!\n\r");
 	BaseType_t xHigherPriorityTaskWoken;
 
     /* The xHigherPriorityTaskWoken parameter must be initialized to pdFALSE

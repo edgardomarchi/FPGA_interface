@@ -11,3 +11,13 @@ RemoteSystemsTempFiles/
 *.elf
 *webtalk*
 *.log
+hdl/ipshared*
+hdl/IPs/*/synth/*
+hdl/IPs/*/*.xml
+hdl/IPs/*/*.xdc
+hdl/IPs/*/*.veo
+hdl/IPs/*/*.vho
+hdl/IPs/*/sim/*
+hdl/IPs/*/doc/*
+vivado_project/*
+!vivado_project/*.tcl
